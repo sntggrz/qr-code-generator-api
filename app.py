@@ -2,12 +2,12 @@ import re
 from io import BytesIO
 
 import qrcode
+from PIL import ImageOps
 from flask import Flask, request, send_file
 from flasgger import Swagger
 from flask_restful import Api, Resource
 from qrcode.exceptions import DataOverflowError
 from qrcode.image.styledpil import StyledPilImage
-from qrcode.image.styles.colormasks import SolidFillColorMask
 from qrcode.image.styles.moduledrawers.pil import CircleModuleDrawer, RoundedModuleDrawer
 
 app = Flask(__name__)
@@ -132,7 +132,7 @@ class QrCode(Resource):
             return {"message": "text is too long for a QR code"}, 400
 
         if style == 'square':
-            image = qr.make_image(fill_color=fill_color, back_color=back_color)
+            image = qr.make_image()
         else:
             drawers = {
                 'rounded': RoundedModuleDrawer,
@@ -141,11 +141,14 @@ class QrCode(Resource):
             image = qr.make_image(
                 image_factory=StyledPilImage,
                 module_drawer=drawers[style](),
-                color_mask=SolidFillColorMask(
-                    back_color=back_color,
-                    front_color=fill_color,
-                ),
             )
+
+        # Colorize after drawing so black backgrounds do not hide styled modules.
+        image = ImageOps.colorize(
+            image.get_image().convert('L'),
+            black=fill_color,
+            white=back_color,
+        )
 
         image_file = BytesIO()
         image.save(image_file, format="PNG")
