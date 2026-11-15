@@ -2,3 +2,4 @@ flask
 flasgger
 flask_restful
 qrcode[pil]
+gunicorn
